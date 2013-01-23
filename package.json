@@ -1,0 +1,23 @@
+{
+    "name": "context-cache",
+    "version": "0.0.1",
+    "description": "Efficiently caches data when the cache key is a context, which may take a very large number of values",
+    "keywords": [
+        "cache"
+    ],
+    "author": "Julien Lecomte <julien.lecomte@gmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/jlecomte/context-cache.git"
+    },
+    "bugs": {
+        "url" : "http://github.com/jlecomte/context-cache/issues"
+    },
+    "scripts": {
+        "test": "test/run.js"
+    },
+    "licenses" : [{
+        "type" : "MIT",
+        "url" : "http://github.com/jlecomte/context-cache/raw/master/LICENSE"
+    }]
+}
