@@ -131,7 +131,15 @@ function ContextCache(cfg) {
         config.hotcacheTTL = cfg.hotcacheTTL || DEFAULT_HOT_CACHE_TTL_MS;
     }
 
+    config.isolationMode = !!cfg.isolationMode;
+
     //-- Private methods ------------------------------------------------------
+
+    function object(o) {
+        function F() {}
+        F.prototype = o;
+        return new F();
+    }
 
     function purgeHotCache() {
         var now = Date.now(),
@@ -225,8 +233,11 @@ function ContextCache(cfg) {
      * @return {Boolean}
      */
     this.set = function (context, data) {
+        if (typeof context !== 'string') {
+            throw new Error('Invalid value for the "context" parameter');
+        }
+
         var ctx,
-            minhits,
             minctx;
 
         if (cache.hasOwnProperty(context)) {
@@ -284,6 +295,10 @@ function ContextCache(cfg) {
      * @return {Object}
      */
     this.get = function (context) {
+        if (typeof context !== 'string') {
+            throw new Error('Invalid value for the "context" parameter');
+        }
+
         // Retrieve the data. This may return undefined!
         var data = retrieve(context);
 
@@ -292,6 +307,13 @@ function ContextCache(cfg) {
             hits[context]++;
         } else {
             hits[context] = 1;
+        }
+
+        if (data && config.isolationMode) {
+            // This ensures that whatever the application code does, it won't
+            // pollute the values we store in the cache. It is also more
+            // efficient than cloning!
+            data = object(data);
         }
 
         return data;
