@@ -57,7 +57,7 @@ traffic and low memory consumption, which is a requirement for efficient GC.
 
 */
 
-/*jslint node: true, nomen: true, plusplus: true, todo: true */
+/*jslint node: true, plusplus: true, todo: true */
 
 'use strict';
 
@@ -65,41 +65,55 @@ var DEFAULT_MAX_CACHE_SIZE = 100,
     DEFAULT_CACHE_HIT_THRESHOLD = 10,
     DEFAULT_HOT_CACHE_TTL_MS = 1000;
 
-function ContextCache(config) {
+/**
+ * @class ContextCache
+ * @constructor
+ * @params {Object} cfg
+ */
+function ContextCache(cfg) {
 
-    var // The "master" cache, containing the serialized data
-        // for the most requested contexts.
-        _masterCache = {},
+    var // Internal config object. We prefer to use this instead of the
+        // specified object since that one may be modified later on by
+        // the caller, changing the properties of this instance.
+        config = {},
 
-        // The number of contexts for which we have data in the master cache
+        // The "master" cache, containing the (serialized) data
+        // only for the most requested contexts.
+        cache = {},
+
+        // The number of hits for each requested context.
+        hits = {},
+
+        // The number of contexts for which we have data in the cache
         count = 0,
 
         // The total number of read operations
-        _accesses = 0,
+        accesses = 0,
 
         // The number of cache hits
-        _hits = 0,
+        totalhits = 0,
 
-        // The "hot" cache, initialized below, only if needed.
-        _hotCache;
+        // The "hot" cache, initialized below, only if needed, which contains
+        // the deserialized data.
+        hotcache;
 
     //-- Validate/compute configuration options -------------------------------
 
-    if (config.hasOwnProperty('maxCacheSize') &&
-            (isNaN(config.maxCacheSize) || config.maxCacheSize <= 0)) {
+    if (cfg.hasOwnProperty('maxCacheSize') &&
+            (isNaN(cfg.maxCacheSize) || cfg.maxCacheSize <= 0)) {
         throw new Error('Invalid value for the "maxCacheSize" option');
-    } else {
-        config.maxCacheSize = DEFAULT_MAX_CACHE_SIZE;
     }
 
-    if (config.hasOwnProperty('cacheHitThreshold') &&
-            (isNaN(config.cacheHitThreshold) || config.cacheHitThreshold <= 0)) {
+    config.maxCacheSize = cfg.maxCacheSize || DEFAULT_MAX_CACHE_SIZE;
+
+    if (cfg.hasOwnProperty('cacheHitThreshold') &&
+            (isNaN(cfg.cacheHitThreshold) || cfg.cacheHitThreshold <= 0)) {
         throw new Error('Invalid value for the "cacheHitThreshold" option');
-    } else {
-        config.cacheHitThreshold = DEFAULT_CACHE_HIT_THRESHOLD;
     }
 
-    if (config.hasOwnProperty('useHotCache') && config.useHotCache) {
+    config.cacheHitThreshold = cfg.cacheHitThreshold || DEFAULT_CACHE_HIT_THRESHOLD;
+
+    if (cfg.hasOwnProperty('useHotCache') && cfg.useHotCache) {
         // When the hot cache is used, the objects are stored serialized in
         // the master cache to reduce even further the work the GC has to do.
         // This cache mitigates the costs of serializing/deserializing during
@@ -107,33 +121,99 @@ function ContextCache(config) {
 
         // When the hot cache is not used, the objects are stored deserialized
         // directly in the master cache.
-        _hotCache = {};
+        hotcache = {};
 
-        if (config.hasOwnProperty('hotCacheTTL') &&
-                (isNaN(config.hotCacheTTL) || config.hotCacheTTL <= 0)) {
-            throw new Error('Invalid value for the "hotCacheTTL" option');
-        } else {
-            config.hotCacheTTL = DEFAULT_HOT_CACHE_TTL_MS;
+        if (cfg.hasOwnProperty('hotcacheTTL') &&
+                (isNaN(cfg.hotcacheTTL) || cfg.hotcacheTTL <= 0)) {
+            throw new Error('Invalid value for the "hotcacheTTL" option');
         }
+
+        config.hotcacheTTL = cfg.hotcacheTTL || DEFAULT_HOT_CACHE_TTL_MS;
     }
 
     //-- Private methods ------------------------------------------------------
 
-    function _purgeHotCache() {
+    function purgeHotCache() {
         var now = Date.now(),
             context;
 
-        if (!_hotCache) {
+        if (!hotcache) {
             return;
         }
 
-        for (context in _hotCache) {
-            if (_hotCache.hasOwnProperty(context)) {
-                if (now - _hotCache[context].ts > config.hotCacheTTL) {
-                    delete _hotCache[context];
+        for (context in hotcache) {
+            if (hotcache.hasOwnProperty(context)) {
+                if (now - hotcache[context].ts > config.hotcacheTTL) {
+                    delete hotcache[context];
                 }
             }
         }
+    }
+
+    function store(context, data) {
+        count++;
+
+        if (hotcache) {
+            // The data is stored serialized if the hot cache is enabled.
+            cache[context] = JSON.stringify(data);
+
+            // Also add it to the hot cache since we're likely
+            // to read it soon during the handling of this request.
+            hotcache[context] = {
+                ts: Date.now(),
+                data: data
+            };
+
+            // Now, this is our opportunity to remove stale entries
+            // from the hot cache.
+            purgeHotCache();
+        } else {
+            cache[context] = data;
+        }
+    }
+
+    function retrieve(context) {
+        var now = Date.now(),
+            data,
+            o;
+
+        accesses++;
+
+        if (cache.hasOwnProperty(context)) {
+            // This is a frequently requested context...
+            totalhits++;
+            data = cache[context];
+
+            if (hotcache) {
+                if (hotcache.hasOwnProperty(context)) {
+                    // This object was accessed recently enough that it is
+                    // still in the hot cache. Retrieve it!
+                    o = hotcache[context];
+                    data = o.data;
+
+                    // Update its timestamp so that the object may live in
+                    // the hot cache long enough to make that cache
+                    // worthwhile...
+                    o.ts = now;
+                } else {
+                    // This usually happens on the first hit during the
+                    // handling of a request for a frequently requested
+                    // context.
+                    data = JSON.parse(data);
+
+                    hotcache[context] = {
+                        ts: now,
+                        data: data
+                    };
+
+                    // Now, this is our opportunity to remove stale entries
+                    // from the hot cache.
+                    purgeHotCache();
+                }
+            }
+        }
+
+        return data;
     }
 
     //-- Public methods -------------------------------------------------------
@@ -145,22 +225,21 @@ function ContextCache(config) {
      * @return {Boolean}
      */
     this.set = function (context, data) {
-        var mo;
+        var ctx,
+            minhits,
+            minctx;
 
-        if (!_masterCache.hasOwnProperty(context)) {
-            // This context was never written or even requested.
-            // Create an empty entry in the master cache.
-            _masterCache[context] = { hits: 0 };
-        }
-
-        mo = _masterCache[context];
-
-        if (mo.data) {
-            // The object was already cached -> nothing to do!
+        if (cache.hasOwnProperty(context)) {
+            // This context has already been cached -> nothing to do!
             return true;
         }
 
-        if (mo.hits < config.cacheHitThreshold) {
+        if (!hits.hasOwnProperty(context)) {
+            // This context has never been requested before.
+            hits[context] = 0;
+        }
+
+        if (hits[context] < config.cacheHitThreshold) {
             // This checks prevents data from being cached immediately after
             // a box is put into rotation. Indeed, we need to handle a few
             // requests to get some basic knowledge about what the traffic
@@ -170,76 +249,52 @@ function ContextCache(config) {
 
         if (count < config.maxCacheSize) {
             // The cache is not full, so we can just store the data.
-            // Note that the data is stored serialized if the hot cache
-            // is enabled.
-            count++;
-            mo.data = _hotCache ? JSON.stringify(data) : data;
+            store(context, data);
             return true;
         }
 
-        // The cache is full. Question is: can we bump something out of the
-        // cache in order to put this new one in?
-        // TODO
+        // The cache is full. Let's find the cache entry for which the number
+        // of hits is the smallest...
+
+        for (ctx in cache) {
+            if (cache.hasOwnProperty(ctx)) {
+                if (!minctx) {
+                    minctx = ctx;
+                } else if (hits[ctx] < hits[minctx]) {
+                    minctx = ctx;
+                }
+            }
+        }
+
+        // Now, let's see if it is smaller than the number of hits for the
+        // specified context. If so, cache the data for the specified context.
+
+        if (hits[minctx] < hits[context]) {
+            delete cache[minctx];
+            store(context, data);
+            return true;
+        }
+
+        return false;
     };
 
     /**
      * @method get
-     * @params {String} context
+     * @params {String} ctx
      * @return {Object}
      */
     this.get = function (context) {
-        var now = Date.now(),
-            ho,
-            mo,
-            data;
+        // Retrieve the data. This may return undefined!
+        var data = retrieve(context);
 
-        _accesses++;
-
-        if (_masterCache.hasOwnProperty(context)) {
-            // This context has been requested before since we have an entry
-            // for it in the master cache. This does not mean that the data
-            // is actually available though!
-            mo = _masterCache[context];
-            mo.hits++;
-
-            if (mo.data) {
-                // This must be a frequently requested context since the data
-                // is available in the master cache. This is a cache hit.
-                _hits++;
-
-                if (_hotCache) {
-                    if (_hotCache.hasOwnProperty(context)) {
-                        // This object was accessed recently enough that it is
-                        // still in the hot cache. Retrieve it!
-                        ho = _hotCache[context];
-                        data = ho.data;
-
-                        // Update its timestamp so that the object may live in
-                        // the hot cache long enough to make that cache
-                        // worthwhile...
-                        ho.ts = now;
-                    } else {
-                        // This usually happens on the first hit during the
-                        // handling of a request.
-                        data = JSON.parse(mo.data);
-                        _hotCache[context] = {
-                            ts: now,
-                            data: data
-                        };
-                        // Now, this is our opportunity to remove stale entries
-                        // in the hot cache.
-                        _purgeHotCache();
-                    }
-                } else {
-                    data = mo.data;
-                }
-
-                return data;
-            }
+        // Update the hit count for this context...
+        if (hits.hasOwnProperty(context)) {
+            hits[context]++;
         } else {
-            count++;
-            _masterCache[context] = { hits: 1 };
+            hits[context] = 1;
         }
+
+        return data;
     };
 
     /**
@@ -247,11 +302,11 @@ function ContextCache(config) {
      * @return {Number}
      */
     this.getHitRate = function () {
-        if (_accesses === 0) {
+        if (accesses === 0) {
             return 0;
         }
 
-        return _hits / _accesses;
+        return totalhits / accesses;
     };
 }
 
