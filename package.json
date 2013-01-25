@@ -16,6 +16,9 @@
     "scripts": {
         "test": "test/run.js"
     },
+    "devDependencies": {
+        "yui": "*"
+    },
     "licenses" : [{
         "type" : "MIT",
         "url" : "http://github.com/jlecomte/context-cache/raw/master/LICENSE"
