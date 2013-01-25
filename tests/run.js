@@ -32,32 +32,171 @@ DEALINGS IN THE SOFTWARE.
 'use strict';
 
 var fs = require('fs'),
-    basename = require('path').basename,
+    json = fs.readFileSync(__dirname + '/fixtures/dimensions.json', 'utf-8'),
+    dimensions = JSON.parse(json),
     Y = require('yui').use('test'),
-    cases = [];
+    A = Y.Test.Assert,
+    AO = Y.Test.ObjectAssert,
+    ContextCache;
+
+function getContext() {
+    var context = {};
+
+    Y.each(dimensions, function (dimension) {
+        var l = dimension.values.length,
+            i = Math.floor(l * Math.random());
+        context[dimension.name] = dimension.values[i];
+    });
+
+    return JSON.stringify(context);
+}
+
+Y.Test.Runner.add(new Y.Test.Case({
+
+    name: 'context-cache unit tests',
+
+    setUp: function () {
+        ContextCache = require('../');
+    },
+
+    'test if we can create a context cache instance': function () {
+        var cc = ContextCache.create(),
+            info;
+
+        A.isObject(cc, 'ContextCache');
+
+        A.isFunction(cc.get, 'ContextCache::get');
+        A.isFunction(cc.set, 'ContextCache::set');
+        A.isFunction(cc.getHitRate, 'ContextCache::getHitRate');
+        A.isFunction(cc.getInfo, 'ContextCache::getInfo');
+
+        info = cc.getInfo();
+        A.areSame(100, info.config.maxCacheSize);
+        A.areSame(0, info.config.cacheHitThreshold);
+        A.isFalse(info.config.isolationMode);
+        A.isFalse(info.config.storeObjectsSerialized);
+        A.isUndefined(info.config.hotcacheTTL);
+        A.isTrue(Y.Object.isEmpty(info.contexts));
+    },
+
+    'test adding and retrieving data to/from a cache': function () {
+        var context = getContext(),
+            cc = ContextCache.create(),
+            info;
+
+        info = cc.getInfo();
+        A.isUndefined(info.contexts[context]);
+
+        A.isTrue(cc.set(context, {}));
+
+        info = cc.getInfo();
+        A.areSame(0, info.contexts[context].hits);
+        A.isTrue(info.contexts[context].cached);
+
+        A.isNotUndefined(cc.get(context));
+
+        info = cc.getInfo();
+        A.areSame(1, info.contexts[context].hits);
+        A.isTrue(info.contexts[context].cached);
+
+        cc.get(context);
+        cc.get(context);
+
+        info = cc.getInfo();
+        A.areSame(3, info.contexts[context].hits);
+        A.isTrue(info.contexts[context].cached);
+    },
+
+    'test cacheHitThreshold configuration': function () {
+        var context = getContext(),
+            data = {},
+            cc = ContextCache.create({
+                cacheHitThreshold: 3
+            });
+
+        A.isFalse(cc.set(context, data));
+        cc.get(context);
+        A.isFalse(cc.set(context, data));
+        cc.get(context);
+        A.isFalse(cc.set(context, data));
+        cc.get(context);
+        A.isTrue(cc.set(context, data));
+    },
+
+    'test maxCacheSize configuration and what happens when we try to add data to an already full cache': function () {
+        var context1 = getContext(),
+            context2 = getContext(),
+            context3 = getContext(),
+            context4 = getContext(),
+
+            cc = ContextCache.create({
+                maxCacheSize: 3
+            }),
+
+            info;
+
+        cc.get(context1);
+        A.isTrue(cc.set(context1, {}));
+
+        cc.get(context2);
+        cc.get(context2);
+        A.isTrue(cc.set(context2, {}));
+
+        cc.get(context3);
+        cc.get(context3);
+        cc.get(context3);
+        A.isTrue(cc.set(context3, {}));
+
+        cc.get(context4);
+        A.isFalse(cc.set(context4, {}));
+
+        cc.get(context4); // Bumps the number of hits for context4 above context1...
+        A.isTrue(cc.set(context4, {}));
+
+        info = cc.getInfo();
+
+        A.areSame(1, info.contexts[context1].hits);
+        A.isFalse(info.contexts[context1].cached);
+
+        A.areSame(2, info.contexts[context2].hits);
+        A.isTrue(info.contexts[context2].cached);
+
+        A.areSame(3, info.contexts[context3].hits);
+        A.isTrue(info.contexts[context3].cached);
+
+        A.areSame(2, info.contexts[context4].hits);
+        A.isTrue(info.contexts[context4].cached);
+    },
+
+    'test storeObjectsSerialized configuration': function () {
+        var context1 = getContext(),
+            context2 = getContext(),
+            cc = ContextCache.create({
+                storeObjectsSerialized: true
+            }),
+            info;
+
+        info = cc.getInfo();
+        A.isTrue(info.config.storeObjectsSerialized);
+        A.areSame(1000, info.config.hotcacheTTL);
+
+        cc.get(context1);
+        cc.set(context1, {});
+
+        this.wait(function () {
+            cc.set(context2, {}); // this will purge the hot cache, removing context1
+            A.isNotUndefined(cc.get(context1));
+            A.isNotUndefined(cc.get(context1));
+            A.isNotUndefined(cc.get(context2));
+        }, 1500);
+    }
+}));
 
 process.on('exit', function () {
     var results = Y.Test.Runner.getResults();
     if (results && results.failed) {
         process.exit(1);
     }
-});
-
-fs.readdirSync(__dirname + '/cases').forEach(function (filename) {
-    if (!/\.js$/.test(filename)) {
-        return;
-    }
-
-    var name = basename(filename, '.js');
-
-    cases.push({
-        name: name,
-        test: require('./cases/' + name)
-    });
-});
-
-cases.forEach(function (testCase) {
-    Y.Test.Runner.add(testCase.test);
 });
 
 Y.Test.Runner.run();
