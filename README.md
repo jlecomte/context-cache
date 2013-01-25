@@ -1,5 +1,8 @@
 # Context cache
 
+Overview
+========
+
 Requests are often served differently depending on their "context".
 The context of a request is composed of multiple dimensions.
 Here are some examples of common dimensions:
@@ -25,3 +28,32 @@ contexts serve over 98% of our traffic.
 This utility module solves this specific issue by caching data only for the
 most requested contexts. This will result in low latency for most of your
 traffic and low memory consumption, which is a requirement for efficient GC.
+
+Usage
+=====
+
+Install the `context-cache` npm package:
+
+    npm install context-cache
+
+You can then create a `ContextCache` instance in your application code:
+
+    var ContextCache = require('./context-cache');
+    var cc = ContextCache.create();
+
+You can pass configuration settings to `create`:
+
+    var cc = ContextCache.create({
+        maxCacheSize: 200,
+        storeObjectsSerialized: true
+    });
+
+You can then use that instance to store/retrieve in/from the cache:
+
+    var ctx = JSON.stringify(context);
+    cc.set(ctx, data);
+    var data = cc.get(ctx);
+
+Finally, you can obtain information about the cache itself:
+
+    console.log(cc.getInfo());
