@@ -45,7 +45,10 @@ You can pass configuration settings to `create`:
 
     var cc = ContextCache.create({
         maxCacheSize: 200,
-        storeObjectsSerialized: true
+        cacheHitThreshold: 10,
+        storeObjectsSerialized: true,
+        hotcacheTTL: 300,
+        isolationMode: true
     });
 
 You can then use that instance to store/retrieve in/from the cache:
