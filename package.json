@@ -20,7 +20,9 @@
         "test": "node ./tests/run.js"
     },
     "devDependencies": {
-        "yui": "*"
+        "yui": "*",
+        "benchmark": "*",
+        "benchtable": "*"
     },
     "licenses" : [{
         "type" : "MIT",

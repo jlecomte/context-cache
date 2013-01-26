@@ -56,7 +56,7 @@ Y.Test.Runner.add(new Y.Test.Case({
     name: 'context-cache unit tests',
 
     setUp: function () {
-        ContextCache = require('../');
+        ContextCache = require('../lib/context-cache.js');
     },
 
     'test if we can create a context cache instance': function () {
@@ -73,7 +73,7 @@ Y.Test.Runner.add(new Y.Test.Case({
         info = cc.getInfo();
         A.areSame(100, info.config.maxCacheSize);
         A.areSame(0, info.config.cacheHitThreshold);
-        A.isFalse(info.config.isolationMode);
+        A.isFalse(!!info.config.isolationMode);
         A.isFalse(info.config.storeObjectsSerialized);
         A.isUndefined(info.config.hotcacheTTL);
         A.isTrue(Y.Object.isEmpty(info.contexts));
@@ -193,35 +193,41 @@ Y.Test.Runner.add(new Y.Test.Case({
 
     'test isolationMode': function () {
         var context = getContext(),
-            cc = ContextCache.create({
-                isolationMode: true
-            }),
             source = {
                 a: {
                     b: 1
                 },
                 c: 1
-            },
-            dest;
+            };
 
-        cc.set(context, source);
-        dest = cc.get(context);
+        function validate(model) {
+            var cc = ContextCache.create({
+                isolationMode: model
+            });
+            cc.set(context, source);
 
-        A.areSame(1, dest.a.b);
+            var dest = cc.get(context);
 
-        // changing top level entries
-        dest.c = 2;
-        // changing child entries
-        dest.a.b = 3;
-        // adding top level entries
-        dest.d = 4;
-        // adding child entries
-        dest.a.e = 5;
+            A.areSame(1, dest.a.b, model);
 
-        A.areSame(1, source.c, 'top level entries are not isolated');
-        A.areSame(1, source.a.b, 'child entries are not isolated');
-        A.isUndefined(source.d, 'new top level entries are not isolated');
-        A.isUndefined(source.a.e, 'new child entries are not isolated');
+            // changing top level entries
+            dest.c = 2;
+            // changing child entries
+            dest.a.b = 3;
+            // adding top level entries
+            dest.d = 4;
+            // adding child entries
+            dest.a.e = 5;
+
+            A.areSame(1, source.c, model + ': top level entries are not isolated');
+            A.areSame(1, source.a.b, model + ': child entries are not isolated');
+            A.isUndefined(source.d, model + ': new top level entries are not isolated');
+            A.isUndefined(source.a.e, model + ': new child entries are not isolated');
+        }
+
+        validate('json');
+        validate('proto');
+        validate('clone');
     }
 
 }));
