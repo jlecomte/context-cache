@@ -189,7 +189,41 @@ Y.Test.Runner.add(new Y.Test.Case({
             A.isNotUndefined(cc.get(context1));
             A.isNotUndefined(cc.get(context2));
         }, 1500);
+    },
+
+    'test isolationMode': function () {
+        var context = getContext(),
+            cc = ContextCache.create({
+                isolationMode: true
+            }),
+            source = {
+                a: {
+                    b: 1
+                },
+                c: 1
+            },
+            dest;
+
+        cc.set(context, source);
+        dest = cc.get(context);
+
+        A.areSame(1, dest.a.b);
+
+        // changing top level entries
+        dest.c = 2;
+        // changing child entries
+        dest.a.b = 3;
+        // adding top level entries
+        dest.d = 4;
+        // adding child entries
+        dest.a.e = 5;
+
+        A.areSame(1, source.c, 'top level entries are not isolated');
+        A.areSame(1, source.a.b, 'child entries are not isolated');
+        A.isUndefined(source.d, 'new top level entries are not isolated');
+        A.isUndefined(source.a.e, 'new child entries are not isolated');
     }
+
 }));
 
 process.on('exit', function () {
