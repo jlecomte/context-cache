@@ -6,6 +6,9 @@
         "cache"
     ],
     "author": "Julien Lecomte <julien.lecomte@gmail.com>",
+    "contributors": [
+        "Caridy Patino <caridy@gmail.com>"
+    ],
     "repository": {
         "type": "git",
         "url": "git://github.com/jlecomte/context-cache.git"
