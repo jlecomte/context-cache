@@ -48,7 +48,7 @@ You can pass configuration settings to `create`:
         cacheHitThreshold: 10,
         storeObjectsSerialized: true,
         hotcacheTTL: 300,
-        isolationMode: true
+        isolationMode: 'clone'
     });
 
 You can then use that instance to store/retrieve in/from the cache:
