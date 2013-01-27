@@ -201,12 +201,15 @@ Y.Test.Runner.add(new Y.Test.Case({
             };
 
         function validate(model) {
-            var cc = ContextCache.create({
+            var cc, dest;
+
+            cc = ContextCache.create({
                 isolationMode: model
             });
+
             cc.set(context, source);
 
-            var dest = cc.get(context);
+            dest = cc.get(context);
 
             A.areSame(1, dest.a.b, model);
 
@@ -229,7 +232,6 @@ Y.Test.Runner.add(new Y.Test.Case({
         validate('proto');
         validate('clone');
     }
-
 }));
 
 process.on('exit', function () {

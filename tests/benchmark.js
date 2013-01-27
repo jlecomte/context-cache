@@ -1,8 +1,10 @@
 /*jslint node:true, nomen:true, stupid: true */
+
 'use strict';
 
 var fs = require('fs'),
     dimensions = JSON.parse(fs.readFileSync(__dirname + '/fixtures/dimensions.json', 'utf-8')),
+    ContextCache = require('../lib/context-cache.js'),
     Benchmark = require('benchmark').Benchmark,
     Benchtable = require('benchtable');
 
@@ -35,11 +37,7 @@ function getSuite(testName) {
 }
 
 function getSuiteTable(testName) {
-    var suiteTable;
-
-    // enabling benchtable suite
-
-    suiteTable = new Benchtable(testName);
+    var suiteTable = new Benchtable(testName);
 
     suiteTable.on('start', function () {
         console.log('Starting benchmarks.');
@@ -96,31 +94,33 @@ function getBigObject() {
     return {a: {b: 'big string: ' + new Array(20000).join("very "), c: 'super big string: ' + new Array(20000).join("very ")}};
 }
 
-function testSetIsolation () {
-    // example of a benchtable test
-    var v0 = require('../lib/context-cache.js').create({});
-    var v1 = require('../lib/context-cache.js').create({
-        isolationMode: 'json'
-    });
-    var v2 = require('../lib/context-cache.js').create({
-        isolationMode: 'proto'
-    });
-    var v3 = require('../lib/context-cache.js').create({
-        isolationMode: 'clone'
-    });
+function testSetIsolation() {
+    var v0 = ContextCache.create(),
+
+        v1 = ContextCache.create({
+            isolationMode: 'json'
+        }),
+
+        v2 = ContextCache.create({
+            isolationMode: 'proto'
+        }),
+
+        v3 = ContextCache.create({
+            isolationMode: 'clone'
+        });
 
     getSuiteTable('context set method')
         // add functions
-        .addFunction('set without isolation', function(s) {
+        .addFunction('set without isolation', function (s) {
             v0.set(getContext(), s);
         })
-        .addFunction('set with json isolation', function(s) {
+        .addFunction('set with json isolation', function (s) {
             v1.set(getContext(), s);
         })
-        .addFunction('set with proto isolation', function(s) {
+        .addFunction('set with proto isolation', function (s) {
             v2.set(getContext(), s);
         })
-        .addFunction('set with clone isolation', function(s) {
+        .addFunction('set with clone isolation', function (s) {
             v3.set(getContext(), s);
         })
         // add inputs
@@ -133,27 +133,30 @@ function testSetIsolation () {
 }
 
 function testGetIsolation() {
-    // example of a benchtable test
-    var v0 = require('../lib/context-cache.js').create({
-        isolationMode: false,
-        storeObjectsSerialized: 10
-    });
-    var v1 = require('../lib/context-cache.js').create({
-        isolationMode: 'json',
-        storeObjectsSerialized: 10
-    });
-    var v2 = require('../lib/context-cache.js').create({
-        isolationMode: 'clone',
-        storeObjectsSerialized: 10
-    });
-    var v3 = require('../lib/context-cache.js').create({
-        isolationMode: 'proto',
-        storeObjectsSerialized: 10
-    });
-    var c1 = getContext();
-    var c2 = getContext();
-    var c3 = getContext();
-    var c4 = getContext();
+    var v0 = ContextCache.create({
+            isolationMode: false,
+            storeObjectsSerialized: 10
+        }),
+
+        v1 = ContextCache.create({
+            isolationMode: 'json',
+            storeObjectsSerialized: 10
+        }),
+
+        v2 = ContextCache.create({
+            isolationMode: 'clone',
+            storeObjectsSerialized: 10
+        }),
+
+        v3 = ContextCache.create({
+            isolationMode: 'proto',
+            storeObjectsSerialized: 10
+        }),
+
+        c1 = getContext(),
+        c2 = getContext(),
+        c3 = getContext(),
+        c4 = getContext();
 
     // simple object
     v0.set(c1, getSimpleObject());
@@ -181,16 +184,16 @@ function testGetIsolation() {
 
     getSuiteTable('context get method in isolation')
         // add functions
-        .addFunction('get without isolation', function(context) {
+        .addFunction('get without isolation', function (context) {
             v0.get(context);
         })
-        .addFunction('get with json isolation', function(context) {
+        .addFunction('get with json isolation', function (context) {
             v1.get(context);
         })
-        .addFunction('get with clone isolation', function(context) {
+        .addFunction('get with clone isolation', function (context) {
             v2.get(context);
         })
-        .addFunction('get with proto isolation', function(context) {
+        .addFunction('get with proto isolation', function (context) {
             v3.get(context);
         })
         // add inputs
