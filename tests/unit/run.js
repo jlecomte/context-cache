@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 'use strict';
 
 var fs = require('fs'),
-    json = fs.readFileSync(__dirname + '/fixtures/dimensions.json', 'utf-8'),
+    json = fs.readFileSync(__dirname + '/../fixtures/dimensions.json', 'utf-8'),
     dimensions = JSON.parse(json),
     Y = require('yui').use('test'),
     A = Y.Test.Assert,
@@ -56,7 +56,7 @@ Y.Test.Runner.add(new Y.Test.Case({
     name: 'context-cache unit tests',
 
     setUp: function () {
-        ContextCache = require('../lib/context-cache.js');
+        ContextCache = require('../../lib/context-cache.js');
     },
 
     'test if we can create a context cache instance': function () {
