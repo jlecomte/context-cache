@@ -8,6 +8,7 @@ var fs = require('fs'),
     Benchtable = require('benchtable');
 
 module.exports = {
+
     getSuite: function (testName) {
         var suite;
 
@@ -35,6 +36,7 @@ module.exports = {
 
         return suite;
     },
+
     getSuiteTable: function (testName) {
         var suiteTable = new Benchtable(testName);
 
@@ -59,6 +61,7 @@ module.exports = {
 
         return suiteTable;
     },
+
     getContext: function () {
         var context = {},
             dimension,
@@ -75,15 +78,19 @@ module.exports = {
 
         return JSON.stringify(context);
     },
+
     getSimpleObject: function () {
         return {a: 1, b: 2, c: 3};
     },
+
     get3LevelsObject: function () {
         return {a: {b: {c: 1}}};
     },
+
     get10LevelsObject: function () {
         return {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: 1}}}}}}}}}};
     },
+
     getBigObject: function () {
         return {a: {b: 'big string: ' + new Array(20000).join("very "), c: 'super big string: ' + new Array(20000).join("very ")}};
     }
