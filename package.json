@@ -17,7 +17,7 @@
         "url" : "http://github.com/jlecomte/context-cache/issues"
     },
     "scripts": {
-        "test": "node ./tests/run.js"
+        "test": "node ./tests/unit/run.js"
     },
     "devDependencies": {
         "yui": "*",
