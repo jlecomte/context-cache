@@ -3,9 +3,9 @@
 'use strict';
 
 var common = require('./benchmark-common.js'),
-    ContextCache = require('../../lib/context-cache.js');
+    ContextCache = require('../../lib/context-cache.js'),
 
-var v0 = ContextCache.create({
+    v0 = ContextCache.create({
         isolationMode: false,
         storeObjectsSerialized: 10
     }),
@@ -20,11 +20,6 @@ var v0 = ContextCache.create({
         storeObjectsSerialized: 10
     }),
 
-    v3 = ContextCache.create({
-        isolationMode: 'proto',
-        storeObjectsSerialized: 10
-    }),
-
     c1 = common.getContext(),
     c2 = common.getContext(),
     c3 = common.getContext(),
@@ -34,25 +29,21 @@ var v0 = ContextCache.create({
 v0.set(c1, common.getSimpleObject());
 v1.set(c1, common.getSimpleObject());
 v2.set(c1, common.getSimpleObject());
-v3.set(c1, common.getSimpleObject());
 
 // 3 levels deep
 v0.set(c2, common.get3LevelsObject());
 v1.set(c2, common.get3LevelsObject());
 v2.set(c2, common.get3LevelsObject());
-v3.set(c2, common.get3LevelsObject());
 
 // 10 levels deep
 v0.set(c3, common.get10LevelsObject());
 v1.set(c3, common.get10LevelsObject());
 v2.set(c3, common.get10LevelsObject());
-v3.set(c3, common.get10LevelsObject());
 
 // Extremely big object
 v0.set(c4, common.getBigObject());
 v1.set(c4, common.getBigObject());
 v2.set(c4, common.getBigObject());
-v3.set(c4, common.getBigObject());
 
 common.getSuiteTable('context common.get method in isolation')
     // add functions
@@ -64,9 +55,6 @@ common.getSuiteTable('context common.get method in isolation')
     })
     .addFunction('get with clone isolation', function (context) {
         v2.get(context);
-    })
-    .addFunction('get with proto isolation', function (context) {
-        v3.get(context);
     })
     // add inputs
     .addInput('Simple object', [c1])

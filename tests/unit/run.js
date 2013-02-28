@@ -229,7 +229,6 @@ Y.Test.Runner.add(new Y.Test.Case({
         }
 
         validate('json');
-        validate('proto');
         validate('clone');
     }
 }));

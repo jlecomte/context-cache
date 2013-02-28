@@ -1,6 +1,6 @@
 {
     "name": "context-cache",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "description": "Efficiently caches data when the cache key is a context, which may take a very large number of values",
     "keywords": [
         "cache"

@@ -3,9 +3,9 @@
 'use strict';
 
 var common = require('./benchmark-common.js'),
-    ContextCache = require('../../lib/context-cache.js');
+    ContextCache = require('../../lib/context-cache.js'),
 
-var v0 = ContextCache.create(),
+    v0 = ContextCache.create(),
 
     v1 = ContextCache.create({
         isolationMode: 'json'
@@ -13,10 +13,6 @@ var v0 = ContextCache.create(),
 
     v2 = ContextCache.create({
         isolationMode: 'clone'
-    }),
-
-    v3 = ContextCache.create({
-        isolationMode: 'proto'
     });
 
 common.getSuiteTable('context set method')
@@ -29,9 +25,6 @@ common.getSuiteTable('context set method')
     })
     .addFunction('set with clone isolation', function (s) {
         v2.set(common.getContext(), s);
-    })
-    .addFunction('set with proto isolation', function (s) {
-        v3.set(common.getContext(), s);
     })
     // add inputs
     .addInput('Simple object', [common.getSimpleObject()])
